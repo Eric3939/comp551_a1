@@ -15,7 +15,7 @@ class LinearRegression:
         X = self._preprocess_X(X)
         D = X.shape[1]
         w0 = np.zeros(D)
-        self.weights = optimizer.optimize(self.compute_gradient, X, y, w0)
+        self.weights = optimizer.optimize(self.compute_gradient, X, y, w0, self.compute_loss)
         return self
 
     def predict(self, X):
@@ -27,6 +27,9 @@ class LinearRegression:
         yh = X @ w
         grad = .5 * (X.T @ (yh - y)) / N
         return grad
+    
+    def compute_loss(self, X, y, w):
+        return 0.5 * np.sum((y - X @ w) ** 2)
 
     def _preprocess_X(self, X):
         # ensures 2d shape
@@ -50,7 +53,7 @@ class LogisticRegression:
         X = self._preprocess_X(X)
         D = X.shape[1]
         w0 = np.zeros(D)
-        self.weights = optimizer.optimize(self.compute_gradient, X, y, w0)
+        self.weights = optimizer.optimize(self.compute_gradient, X, y, w0, self.compute_loss)
         return self
 
     def predict_proba(self, X):
@@ -66,6 +69,10 @@ class LogisticRegression:
         grad = (X.T @ (yh - y)) / N
         return grad
 
+    def compute_loss(self, X, y, w):
+        yh = self._sigmoid(X @ w)
+        return np.sum(-y * np.log(yh) - (1 - y) * np.log(1 - yh))
+    
     def _sigmoid(self, z):
         return 1. / (1 + np.exp(-z))
 
@@ -83,15 +90,18 @@ class LogisticRegression:
 
 
 class GradientDescent:
-    def __init__(self, lr=.001, max_iters=1e4, epsilon=1e-8, record_history=False):
+    def __init__(self, lr=.001, max_iters=1e4, epsilon=1e-8, record_history=False, record_loss=False):
         self.lr = lr
         self.max_iters = max_iters
         self.epsilon = epsilon
         self.record_history = record_history
+        self.record_loss = record_loss
         if record_history:
             self.w_history = []
+        if record_loss:
+            self.loss_history = []
 
-    def optimize(self, gradient_fn, X, y, w0):
+    def optimize(self, gradient_fn, X, y, w0, loss_fn=None):
         w = w0
         grad = np.inf
         t = 1
@@ -100,21 +110,28 @@ class GradientDescent:
             w = w - self.lr * grad
             if self.record_history:
                 self.w_history.append(w)
+            if self.record_loss and loss_fn is not None:
+                current_loss = loss_fn(X, y, w)
+                self.loss_history.append(current_loss)
             t += 1
         return w
 
 
 class StochasticGradientDescent:
-    def __init__(self, lr=.001, max_iters=1e4, batch_size=32, epsilon=1e-8, record_history=False):
+    def __init__(self, lr=.001, max_iters=1e4, batch_size=32, epsilon=1e-8, record_history=False, record_loss=False):
         self.lr = lr
         self.max_iters = max_iters
         self.batch_size = batch_size
         self.epsilon = epsilon
         self.record_history = record_history
+        self.record_loss = record_loss
         if record_history:
             self.w_history = []
+        if record_loss:
+            self.loss_history = []
 
-    def optimize(self, gradient_fn, X, y, w):
+    def optimize(self, gradient_fn, X, y, w0, loss_fn=None):
+        w = w0
         grad = np.inf
         t = 1
         N = X.shape[0]
@@ -130,5 +147,8 @@ class StochasticGradientDescent:
             
             if self.record_history:
                 self.w_history.append(w)
+            if self.record_loss and loss_fn is not None:
+                current_loss = loss_fn(X, y, w)
+                self.loss_history.append(current_loss)
             t += 1
         return w
