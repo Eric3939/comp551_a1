@@ -148,7 +148,7 @@ class StochasticGradientDescent:
             if self.record_history:
                 self.w_history.append(w)
             if self.record_loss and loss_fn is not None:
-                current_loss = loss_fn(X, y, w)
+                current_loss = loss_fn(X_batch, y_batch, w)
                 self.loss_history.append(current_loss)
             t += 1
         return w
